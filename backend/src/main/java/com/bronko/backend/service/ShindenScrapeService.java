@@ -1,9 +1,11 @@
 package com.bronko.backend.service;
 
+import com.bronko.backend.model.Player;
 import com.bronko.backend.model.RelatedSeries;
 import com.bronko.backend.model.Series;
 import com.bronko.backend.utils.Utils;
 import lombok.RequiredArgsConstructor;
+import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.List;
 
 @Service
@@ -119,5 +123,30 @@ public class ShindenScrapeService {
             relatedSeries.setRelationType(figcaption.get(1).text());
         }
         return relatedSeries;
+    }
+
+    public Player getPlayer(int id) throws IOException, InterruptedException {
+        String auth = "X2d1ZXN0XzowLDUsMjEwMDAwMDAsMjU1LDQxNzQyOTM2NDQ%3D";
+        String preloadIframeURL = apiUrl + "/" + id + "/player_load?auth=" + auth;
+        String loadIframeURL = apiUrl + "/" + id + "/player_show?auth=" + auth + "&width=765&height=-1";
+
+        Connection.Response res = Jsoup.connect(preloadIframeURL).execute();
+
+        Thread.sleep(5000);
+
+
+        String cookie = res.cookie("api.shinden");
+        if (cookie == null) return null;
+
+        Document document = Jsoup.connect(loadIframeURL).cookie("api.shinden", cookie).get();
+        Element iframe = document.selectFirst("iframe");
+
+        Player player = new Player();
+        if (iframe != null) {
+            String iframeStr = iframe.toString();
+            player.setIframe(iframeStr);
+            player.setPlayerId(id);
+        }
+        return player;
     }
 }
