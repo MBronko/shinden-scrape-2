@@ -4,11 +4,13 @@ import com.bronko.backend.model.RelatedSeries;
 import com.bronko.backend.model.Series;
 import com.bronko.backend.utils.Utils;
 import lombok.RequiredArgsConstructor;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -20,7 +22,12 @@ public class ShindenScrapeService {
     final String apiUrl = "https://api4.shinden.pl/xhr";
 
     public Series getSeries(int id) throws IOException {
-        Document document = Jsoup.connect(baseUrl + "/series/" + id).get();
+        Document document;
+        try {
+            document = Jsoup.connect(baseUrl + "/series/" + id).get();
+        } catch (HttpStatusException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getMessage(), e);
+        }
 
         Series series = new Series();
 
