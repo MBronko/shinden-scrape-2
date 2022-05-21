@@ -52,4 +52,12 @@ public class Series {
         this.relatedSeries.add(relatedSeries);
         relatedSeries.setRelatedTo(this);
     }
+
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "series", orphanRemoval = true)
+    private List<Episode> episodes = new ArrayList<>();
+
+    public void addEpisode(Episode episode){
+        this.episodes.add(episode);
+        episode.setSeries(this);
+    }
 }

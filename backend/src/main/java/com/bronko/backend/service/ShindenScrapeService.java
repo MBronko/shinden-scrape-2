@@ -1,5 +1,6 @@
 package com.bronko.backend.service;
 
+import com.bronko.backend.model.Episode;
 import com.bronko.backend.model.Player;
 import com.bronko.backend.model.RelatedSeries;
 import com.bronko.backend.model.Series;
@@ -11,12 +12,19 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.boot.configurationprocessor.json.JSONException;
+import org.springframework.boot.configurationprocessor.json.JSONObject;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -130,7 +138,12 @@ public class ShindenScrapeService {
         String preloadIframeURL = apiUrl + "/" + id + "/player_load?auth=" + auth;
         String loadIframeURL = apiUrl + "/" + id + "/player_show?auth=" + auth + "&width=765&height=-1";
 
-        Connection.Response res = Jsoup.connect(preloadIframeURL).execute();
+        Connection.Response res;
+        try {
+            res = Jsoup.connect(preloadIframeURL).execute();
+        } catch (HttpStatusException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getMessage(), e);
+        }
 
         Thread.sleep(5000);
 
@@ -138,7 +151,13 @@ public class ShindenScrapeService {
         String cookie = res.cookie("api.shinden");
         if (cookie == null) return null;
 
-        Document document = Jsoup.connect(loadIframeURL).cookie("api.shinden", cookie).get();
+        Document document;
+        try {
+            document = Jsoup.connect(loadIframeURL).cookie("api.shinden", cookie).get();
+        } catch (HttpStatusException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getMessage(), e);
+        }
+
         Element iframe = document.selectFirst("iframe");
 
         Player player = new Player();
@@ -148,5 +167,78 @@ public class ShindenScrapeService {
             player.setPlayerId(id);
         }
         return player;
+    }
+
+    public List<Player> getPlayers(int seriesId, int episodeId) throws IOException, JSONException {
+        Document document;
+        try {
+            document = Jsoup.connect(baseUrl + "/episode/" + seriesId + "/view/" + episodeId).header("Accept-Language", "pl").get();
+        } catch (HttpStatusException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getMessage(), e);
+        }
+
+        Elements playerTable = document.select("div.table-responsive > table > tbody > tr");
+        List<Player> playerList = new ArrayList<>();
+
+        for (Element tableRow : playerTable) {
+            Player player = new Player();
+
+            Elements columns = tableRow.select("td");
+
+            if (columns.size() < 6) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Issue when parsing table row: not enough columns");
+            }
+
+            Element faviconElem = columns.get(1).selectFirst("span.fav-ico");
+
+            if (faviconElem != null) {
+                String style = faviconElem.attr("style");
+                String faviconUrl = style.split("\\(")[1].substring(0);
+                player.setSubsFavicon(faviconUrl.substring(0, faviconUrl.length() - 1));
+
+                String authors = faviconElem.attr("title");
+                player.setSubsAuthors(authors);
+            }
+
+            Element dataElem = columns.get(5).selectFirst("a");
+            if (dataElem != null) {
+                String data = dataElem.attr("data-episode");
+
+                JSONObject jsonObject;
+                try {
+                    jsonObject = new JSONObject(data);
+                } catch (JSONException e) {
+                    throw new ResponseStatusException(HttpStatus.FAILED_DEPENDENCY, "Exception when parsing json: " + data);
+                }
+
+                // todo: possibility to throw exceptions: not urgent
+
+                player.setPlayerId(Integer.parseInt((String) jsonObject.get("online_id")));
+                player.setService((String) jsonObject.get("player"));
+                player.setLangAudio((String) jsonObject.get("lang_audio"));
+                player.setLangSub((String) jsonObject.get("lang_subs"));
+                player.setResolution((String) jsonObject.get("max_res"));
+                player.setSource((String) jsonObject.get("source"));
+
+                String dateToParse = (String) jsonObject.get("added");
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+                Date parsedDate;
+                try {
+                    parsedDate = dateFormat.parse(dateToParse);
+                } catch (ParseException e) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Exception while parsing timestamp: " + dateToParse);
+                }
+                Timestamp timestamp = new Timestamp(parsedDate.getTime());
+                player.setAdded(timestamp);
+            }
+
+            playerList.add(player);
+        }
+
+        return playerList;
+    }
+
+    public List<Episode> getEpisodes(int seriesId) {
+        return null;
     }
 }
