@@ -1,9 +1,6 @@
 package com.bronko.backend.service;
 
-import com.bronko.backend.model.Episode;
-import com.bronko.backend.model.Player;
-import com.bronko.backend.model.RelatedSeries;
-import com.bronko.backend.model.Series;
+import com.bronko.backend.model.*;
 import com.bronko.backend.utils.Utils;
 import lombok.RequiredArgsConstructor;
 import org.jsoup.Connection;
@@ -16,7 +13,6 @@ import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
@@ -133,10 +129,10 @@ public class ShindenScrapeService {
         return relatedSeries;
     }
 
-    public Player getPlayer(int id) throws IOException, InterruptedException {
+    public PlayerIframe getPlayerIframe(int playerId) throws IOException, InterruptedException {
         String auth = "X2d1ZXN0XzowLDUsMjEwMDAwMDAsMjU1LDQxNzQyOTM2NDQ%3D";
-        String preloadIframeURL = apiUrl + "/" + id + "/player_load?auth=" + auth;
-        String loadIframeURL = apiUrl + "/" + id + "/player_show?auth=" + auth + "&width=765&height=-1";
+        String preloadIframeURL = apiUrl + "/" + playerId + "/player_load?auth=" + auth;
+        String loadIframeURL = apiUrl + "/" + playerId + "/player_show?auth=" + auth + "&width=765&height=-1";
 
         Connection.Response res;
         try {
@@ -160,16 +156,15 @@ public class ShindenScrapeService {
 
         Element iframe = document.selectFirst("iframe");
 
-        Player player = new Player();
+        PlayerIframe playerIframe = new PlayerIframe();
         if (iframe != null) {
             String iframeStr = iframe.toString();
-            player.setIframe(iframeStr);
-            player.setPlayerId(id);
+            playerIframe.setIframe(iframeStr);
         }
-        return player;
+        return playerIframe;
     }
 
-    public List<Player> getPlayers(int seriesId, int episodeId) throws IOException, JSONException {
+    public List<PlayerInfo> getPlayersInfo(int seriesId, int episodeId) throws IOException, JSONException {
         Document document;
         try {
             document = Jsoup.connect(baseUrl + "/episode/" + seriesId + "/view/" + episodeId).header("Accept-Language", "pl").get();
@@ -178,10 +173,10 @@ public class ShindenScrapeService {
         }
 
         Elements playerTable = document.select("div.table-responsive > table > tbody > tr");
-        List<Player> playerList = new ArrayList<>();
+        List<PlayerInfo> playerInfoList = new ArrayList<>();
 
         for (Element tableRow : playerTable) {
-            Player player = new Player();
+            PlayerInfo playerInfo = new PlayerInfo();
 
             Elements columns = tableRow.select("td");
 
@@ -194,10 +189,10 @@ public class ShindenScrapeService {
             if (faviconElem != null) {
                 String style = faviconElem.attr("style");
                 String faviconUrl = style.split("\\(")[1].substring(0);
-                player.setSubsFavicon(faviconUrl.substring(0, faviconUrl.length() - 1));
+                playerInfo.setSubsFavicon(faviconUrl.substring(0, faviconUrl.length() - 1));
 
                 String authors = faviconElem.attr("title");
-                player.setSubsAuthors(authors);
+                playerInfo.setSubsAuthors(authors);
             }
 
             Element dataElem = columns.get(5).selectFirst("a");
@@ -213,12 +208,12 @@ public class ShindenScrapeService {
 
                 // todo: possibility to throw exceptions: not urgent
 
-                player.setPlayerId(Integer.parseInt((String) jsonObject.get("online_id")));
-                player.setService((String) jsonObject.get("player"));
-                player.setLangAudio((String) jsonObject.get("lang_audio"));
-                player.setLangSub((String) jsonObject.get("lang_subs"));
-                player.setResolution((String) jsonObject.get("max_res"));
-                player.setSource((String) jsonObject.get("source"));
+                playerInfo.setId(Integer.parseInt((String) jsonObject.get("online_id")));
+                playerInfo.setService((String) jsonObject.get("player"));
+                playerInfo.setLangAudio((String) jsonObject.get("lang_audio"));
+                playerInfo.setLangSub((String) jsonObject.get("lang_subs"));
+                playerInfo.setResolution((String) jsonObject.get("max_res"));
+                playerInfo.setSource((String) jsonObject.get("source"));
 
                 String dateToParse = (String) jsonObject.get("added");
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
@@ -229,13 +224,13 @@ public class ShindenScrapeService {
                     throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Exception while parsing timestamp: " + dateToParse);
                 }
                 Timestamp timestamp = new Timestamp(parsedDate.getTime());
-                player.setAdded(timestamp);
+                playerInfo.setAdded(timestamp);
             }
 
-            playerList.add(player);
+            playerInfoList.add(playerInfo);
         }
 
-        return playerList;
+        return playerInfoList;
     }
 
     public List<Episode> getEpisodes(int seriesId) {

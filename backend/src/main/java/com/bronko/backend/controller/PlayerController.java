@@ -1,6 +1,6 @@
 package com.bronko.backend.controller;
 
-import com.bronko.backend.model.Player;
+import com.bronko.backend.DTO.PlayerDTO;
 import com.bronko.backend.service.PlayerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.configurationprocessor.json.JSONException;
@@ -17,12 +17,12 @@ public class PlayerController {
     private final PlayerService playerService;
 
     @GetMapping("/player/{playerId}")
-    public Player getPlayer(@PathVariable int playerId) throws IOException, InterruptedException {
-        return playerService.getPlayer(playerId);
+    public PlayerDTO getPlayer(@PathVariable int playerId) throws IOException, InterruptedException {
+        return playerService.getPlayerIframe(playerId);
     }
 
     @GetMapping("/series/{seriesId}/episode/{episodeId}/players")
-    public List<Player> getPlayersForEpisode(@PathVariable int seriesId, @PathVariable int episodeId) throws IOException, JSONException {
+    public List<PlayerDTO> getPlayersForEpisode(@PathVariable int seriesId, @PathVariable int episodeId) throws IOException, JSONException {
         return playerService.getPlayersForEpisode(seriesId, episodeId);
     }
 }

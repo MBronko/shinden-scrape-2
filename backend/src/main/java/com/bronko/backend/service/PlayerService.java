@@ -1,16 +1,20 @@
 package com.bronko.backend.service;
 
+import com.bronko.backend.DTO.PlayerDTO;
 import com.bronko.backend.model.Episode;
 import com.bronko.backend.model.Player;
+import com.bronko.backend.model.PlayerIframe;
+import com.bronko.backend.model.PlayerInfo;
 import com.bronko.backend.repository.EpisodeRepository;
+import com.bronko.backend.repository.PlayerIframeRepository;
+import com.bronko.backend.repository.PlayerInfoRepository;
 import com.bronko.backend.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -19,51 +23,52 @@ public class PlayerService {
     private final EpisodeRepository episodeRepository;
     private final ShindenScrapeService shindenScrapeService;
 
-    public Player getPlayer(int playerId) throws IOException, InterruptedException {
-        Optional<Player> player = playerRepository.findByPlayerIdAndIframeIsNotNull(playerId);
+    public PlayerDTO getPlayerIframe(int playerId) throws IOException, InterruptedException {
+        Optional<Player> optPlayer = playerRepository.findById(playerId);
+        Player player = optPlayer.orElseGet(Player::new);
+        player.setPlayerId(playerId);
 
-        if (player.isPresent() && player.get().getIframe() != null) {
-            return player.get();
+        PlayerIframe iframe = player.getIframe();
+
+        if (iframe != null) {
+            return new PlayerDTO(player);
         }
-        Player newPlayer = shindenScrapeService.getPlayer(playerId);
-        return updateOrCreatePlayer(newPlayer);
+
+        PlayerIframe newIframe = shindenScrapeService.getPlayerIframe(playerId);
+        player.addIframe(newIframe);
+
+        return new PlayerDTO(playerRepository.save(player));
     }
 
-    public List<Player> getPlayersForEpisode(int seriesId, int episodeId) throws IOException, JSONException {
-        Optional<Episode> optEpisode = episodeRepository.findById(episodeId);
+    public List<PlayerDTO> getPlayersForEpisode(int seriesId, int episodeId) throws IOException, JSONException {
+        Episode episode = episodeRepository.findById(episodeId).orElse(null);
 
-        List<Player> players = shindenScrapeService.getPlayers(seriesId, episodeId);
+        List<PlayerInfo> players = shindenScrapeService.getPlayersInfo(seriesId, episodeId);
+        List<PlayerDTO> result = new ArrayList<>();
 
-        if (optEpisode.isPresent()) {
-            Episode episode = optEpisode.get();
-            for (Player player : players) {
-                player.setEpisode(episode);
-                episode.addPlayer(updateOrCreatePlayer(player));
+        List<Integer> playerIds = new ArrayList<>();
+
+        for (PlayerInfo playerInfo : players) {
+            int playerId = playerInfo.getId();
+            playerIds.add(playerId);
+
+            Player player = playerRepository.findById(playerId).orElseGet(Player::new);
+            player.setPlayerId(playerId);
+            player.addInfo(playerInfo);
+
+            if (episode != null) {
+                episode.addPlayer(player);
             }
 
-            return episodeRepository.save(episode).getPlayers();
+            player = playerRepository.save(player);
+            result.add(new PlayerDTO(player));
         }
 
-        return players;
-    }
-
-    public Player createPlayer(Player player) {
-        return playerRepository.save(player);
-    }
-
-    public Player updateOrCreatePlayer(Player player) {
-        Optional<Player> actualOptionalPlayer = playerRepository.findById(player.getPlayerId());
-
-        if (actualOptionalPlayer.isPresent()) {
-            Player actualPlayer = actualOptionalPlayer.get();
-            if (player.getIframe() != null) {
-                actualPlayer.setIframe(player.getIframe());
-                player = actualPlayer;
-            } else {
-                player.setIframe(actualPlayer.getIframe());
-            }
+        if (episode != null) {
+            episodeRepository.save(episode);
+            playerRepository.deleteAllByEpisodeAndPlayerIdNotIn(episode, playerIds);
         }
 
-        return createPlayer(player);
+        return result;
     }
 }

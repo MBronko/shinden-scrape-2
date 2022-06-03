@@ -26,21 +26,19 @@ public class Player {
     @JoinColumn(name = "episode_id")
     private Episode episode;
 
-    private String service;
+    @OneToOne(mappedBy = "player", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    private PlayerIframe iframe;
 
-    private String resolution;
+    @OneToOne(mappedBy = "player", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    private PlayerInfo info;
 
-    private String langAudio;
+    public void addIframe(PlayerIframe iframe) {
+        this.iframe = iframe;
+        iframe.setPlayer(this);
+    }
 
-    private String langSub;
-
-    private String subsFavicon = "";
-
-    private String subsAuthors = "";
-
-    private String source;
-
-    private Timestamp added;
-
-    private String iframe;
+    public void addInfo(PlayerInfo info) {
+        this.info = info;
+        info.setPlayer(this);
+    }
 }
