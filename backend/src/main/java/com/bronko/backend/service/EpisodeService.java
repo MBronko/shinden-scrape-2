@@ -20,33 +20,18 @@ public class EpisodeService {
     public List<Episode> getEpisodesForSeries(int seriesId) throws IOException {
         Series series = seriesService.getSeries(seriesId);
 
-//        Map<Integer, String> iframes = new HashMap<>();
-
-
         List<Episode> episodes = shindenScrapeService.getEpisodes(seriesId);
 
         List<Episode> resultEpisodes = new ArrayList<>();
         List<Integer> episodeIds = new ArrayList<>();
 
         for (Episode episode : episodes) {
-//            series.add
-            resultEpisodes.add(createEpisode(episode));
+            resultEpisodes.add(episode);
             episodeIds.add(episode.getEpisodeId());
         }
 
+        episodeRepository.deleteAllBySeriesAndEpisodeIdNotIn(series, episodeIds);
 
-        List<Integer> toDelete = new ArrayList<>();
-        for (Episode episode : series.getEpisodes()) {
-            if(!episodeIds.contains(episode.getEpisodeId())){
-                toDelete.add(episode.getEpisodeId());
-            }
-        }
-
-        return resultEpisodes;
-    }
-
-
-    public Episode createEpisode(Episode episode) {
-        return episodeRepository.save(episode);
+        return episodeRepository.saveAll(resultEpisodes);
     }
 }

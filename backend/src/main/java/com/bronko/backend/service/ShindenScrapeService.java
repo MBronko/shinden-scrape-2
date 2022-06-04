@@ -216,15 +216,15 @@ public class ShindenScrapeService {
                 playerInfo.setSource((String) jsonObject.get("source"));
 
                 String dateToParse = (String) jsonObject.get("added");
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-                Date parsedDate;
-                try {
-                    parsedDate = dateFormat.parse(dateToParse);
-                } catch (ParseException e) {
-                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Exception while parsing timestamp: " + dateToParse);
-                }
-                Timestamp timestamp = new Timestamp(parsedDate.getTime());
-                playerInfo.setAdded(timestamp);
+//                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+//                Date parsedDate;
+//                try {
+//                    parsedDate = dateFormat.parse(dateToParse);
+//                } catch (ParseException e) {
+//                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Exception while parsing timestamp: " + dateToParse);
+//                }
+//                Timestamp timestamp = new Timestamp(parsedDate.getTime());
+                playerInfo.setAdded(Utils.parseTimestamp(dateToParse, "yyyy-MM-dd hh:mm:ss"));
             }
 
             playerInfoList.add(playerInfo);
@@ -233,7 +233,59 @@ public class ShindenScrapeService {
         return playerInfoList;
     }
 
-    public List<Episode> getEpisodes(int seriesId) {
-        return null;
+    public List<Episode> getEpisodes(int seriesId) throws IOException {
+        Document document;
+        try {
+            document = Jsoup.connect(baseUrl + "/series/" + seriesId + "/episodes").header("Accept-Language", "pl").get();
+        } catch (HttpStatusException e) {
+            throw new ResponseStatusException(e.getStatusCode(), e.getMessage(), e);
+        }
+
+        List<Episode> result = new ArrayList<>();
+
+        Element episodeTable = document.selectFirst("tbody.list-episode-checkboxes");
+
+        if (episodeTable != null) {
+            for (Element row : episodeTable.select("tr")) {
+                Episode episode = new Episode();
+
+                Elements columns = row.select("td");
+                if (columns.size() >= 6) {
+                    String episodeNumber = columns.get(0).text();
+                    episode.setEpisodeNumber(Integer.parseInt(episodeNumber));
+
+                    episode.setTitle(columns.get(1).text());
+
+                    Element onlineElement = columns.get(2).selectFirst("i");
+                    if (onlineElement != null) {
+                        episode.setOnline(onlineElement.hasClass("fa-check"));
+                    }
+
+                    Elements langElements = columns.get(3).select("span");
+                    StringBuilder langs = new StringBuilder();
+                    for (Element element : langElements) {
+                        String[] classes = element.attr("class").split("-");
+                        langs.append(",").append(classes[classes.length - 1]);
+                    }
+                    if (langs.length() > 0) {
+                        episode.setLangs(langs.substring(1));
+                    }
+
+                    episode.setEmissionDate(Utils.parseTimestamp(columns.get(4).text(), "yyyy-MM-dd"));
+
+                    Element url = columns.get(5).selectFirst("a");
+                    if (url != null) {
+                        String[] urlSplit = url.attr("href").split("/");
+                        episode.setEpisodeId(Integer.parseInt(urlSplit[urlSplit.length - 1]));
+                    }
+                }
+
+                result.add(episode);
+            }
+
+        }
+
+
+        return result;
     }
 }
