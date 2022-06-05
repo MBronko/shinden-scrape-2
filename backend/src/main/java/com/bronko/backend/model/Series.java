@@ -1,9 +1,12 @@
 package com.bronko.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
@@ -23,24 +26,24 @@ public class Series {
     private int seriesId;
 
     @Column(length = 512)
-    private String title;
+    private String title = "";
 
     @Column(length = 2048)
-    private String description;
+    private String description = "";
 
-    private String imgUrl;
+    private String imgUrl = "";
 
-    private double rating;
+    private double rating = 0;
 
-    private int votes;
+    private int votes = 0;
 
-    private String distributionType;
+    private String distributionType = "";
 
-    private String status;
+    private String status = "";
 
-    private String emissionDate;
+    private String emissionDate = "";
 
-    private int episodeCount;
+    private int episodeCount = 0;
 
     @UpdateTimestamp
     private Timestamp creationTimestamp;
@@ -48,15 +51,17 @@ public class Series {
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "relatedTo", orphanRemoval = true)
     private List<RelatedSeries> relatedSeries = new ArrayList<>();
 
-    public void addRelatedSeries(RelatedSeries relatedSeries){
+    public void addRelatedSeries(RelatedSeries relatedSeries) {
         this.relatedSeries.add(relatedSeries);
         relatedSeries.setRelatedTo(this);
     }
 
+    @JsonIgnore
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "series", orphanRemoval = true)
     private List<Episode> episodes = new ArrayList<>();
 
-    public void addEpisode(Episode episode){
+    public void addEpisode(Episode episode) {
         this.episodes.add(episode);
         episode.setSeries(this);
     }

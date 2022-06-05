@@ -22,8 +22,12 @@ public class RelatedSeries {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "related_to")
     private Series relatedTo;
-    private String title;
-    private String mediaType;
-    private String relationType;
-    private String imgUrl;
+
+    private String title = "";
+
+    private String mediaType = "";
+
+    private String relationType = "";
+
+    private String imgUrl = "";
 }

@@ -42,21 +42,21 @@ public class PlayerDTO {
 
     private int playerId;
 
-    private String iframe;
+    private String iframe = "";
 
-    private String service;
+    private String service = "";
 
-    private String resolution;
+    private String resolution = "";
 
-    private String langAudio;
+    private String langAudio = "";
 
-    private String langSub;
+    private String langSub = "";
 
     private String subsFavicon = "";
 
     private String subsAuthors = "";
 
-    private String source;
+    private String source = "";
 
     private Timestamp added;
 }

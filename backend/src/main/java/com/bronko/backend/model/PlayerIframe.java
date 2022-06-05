@@ -9,14 +9,14 @@ import lombok.Setter;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "player_frame")
+@Table(name = "player_iframe")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class PlayerIframe {
     @JsonIgnore
-    @OneToOne(fetch = FetchType.EAGER)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id")
     private Player player;
 

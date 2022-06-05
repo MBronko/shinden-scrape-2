@@ -1,13 +1,8 @@
 package com.bronko.backend.service;
 
 import com.bronko.backend.DTO.PlayerDTO;
-import com.bronko.backend.model.Episode;
-import com.bronko.backend.model.Player;
-import com.bronko.backend.model.PlayerIframe;
-import com.bronko.backend.model.PlayerInfo;
+import com.bronko.backend.model.*;
 import com.bronko.backend.repository.EpisodeRepository;
-import com.bronko.backend.repository.PlayerIframeRepository;
-import com.bronko.backend.repository.PlayerInfoRepository;
 import com.bronko.backend.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.configurationprocessor.json.JSONException;
@@ -21,7 +16,9 @@ import java.util.*;
 public class PlayerService {
     private final PlayerRepository playerRepository;
     private final EpisodeRepository episodeRepository;
+
     private final ShindenScrapeService shindenScrapeService;
+    private final EpisodeService episodeService;
 
     public PlayerDTO getPlayerIframe(int playerId) throws IOException, InterruptedException {
         Optional<Player> optPlayer = playerRepository.findById(playerId);
@@ -41,32 +38,36 @@ public class PlayerService {
     }
 
     public List<PlayerDTO> getPlayersForEpisode(int seriesId, int episodeId) throws IOException, JSONException {
-        Episode episode = episodeRepository.findById(episodeId).orElse(null);
+        Episode episode = episodeService.getEpisode(seriesId, episodeId);
 
-        List<PlayerInfo> players = shindenScrapeService.getPlayersInfo(seriesId, episodeId);
-        List<PlayerDTO> result = new ArrayList<>();
+        List<Player> toRemove = new ArrayList<>(episode.getPlayers());
 
-        List<Integer> playerIds = new ArrayList<>();
-
-        for (PlayerInfo playerInfo : players) {
-            int playerId = playerInfo.getId();
-            playerIds.add(playerId);
-
-            Player player = playerRepository.findById(playerId).orElseGet(Player::new);
-            player.setPlayerId(playerId);
-            player.addInfo(playerInfo);
-
-            if (episode != null) {
-                episode.addPlayer(player);
-            }
-
-            player = playerRepository.save(player);
-            result.add(new PlayerDTO(player));
+        Map<Integer, Player> cachedPlayers = new HashMap<>();
+        for (Player player : episode.getPlayers()) {
+            cachedPlayers.put(player.getPlayerId(), player);
         }
 
-        if (episode != null) {
-            episodeRepository.save(episode);
-            playerRepository.deleteAllByEpisodeAndPlayerIdNotIn(episode, playerIds);
+        List<PlayerInfo> players = shindenScrapeService.getPlayersInfo(seriesId, episodeId);
+
+        for (PlayerInfo playerInfo : players) {
+            Player player = cachedPlayers.get(playerInfo.getId());
+            if (player == null) {
+                player = new Player();
+                player.setPlayerId(playerInfo.getId());
+
+                episode.addPlayer(player);
+            } else {
+                toRemove.remove(player);
+            }
+
+            player.addInfo(playerInfo);
+        }
+
+        episode.getPlayers().removeAll(toRemove);
+
+        List<PlayerDTO> result = new ArrayList<>();
+        for (Player player : episodeRepository.save(episode).getPlayers()) {
+            result.add(new PlayerDTO(player));
         }
 
         return result;

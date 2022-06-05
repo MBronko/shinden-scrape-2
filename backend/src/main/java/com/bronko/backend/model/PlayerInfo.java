@@ -20,7 +20,7 @@ public class PlayerInfo {
     private int id;
 
     @JsonIgnore
-    @OneToOne(fetch = FetchType.EAGER)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id")
     private Player player;
 
@@ -32,9 +32,9 @@ public class PlayerInfo {
 
     private String langSub;
 
-    private String subsFavicon = "";
+    private String subsFavicon;
 
-    private String subsAuthors = "";
+    private String subsAuthors;
 
     private String source;
 

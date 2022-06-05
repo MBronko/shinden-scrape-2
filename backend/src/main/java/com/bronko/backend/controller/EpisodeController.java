@@ -1,7 +1,6 @@
 package com.bronko.backend.controller;
 
 import com.bronko.backend.model.Episode;
-import com.bronko.backend.model.Player;
 import com.bronko.backend.service.EpisodeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,5 +18,10 @@ public class EpisodeController {
     @GetMapping("/series/{seriesId}/episodes")
     public List<Episode> getEpisodesForSeries(@PathVariable int seriesId) throws IOException {
         return episodeService.getEpisodesForSeries(seriesId);
+    }
+
+    @GetMapping("/series/{seriesId}/episode/{episodeId}")
+    public Episode getEpisode(@PathVariable int seriesId, @PathVariable int episodeId) throws IOException {
+        return episodeService.getEpisode(seriesId, episodeId);
     }
 }

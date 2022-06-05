@@ -24,7 +24,7 @@ public class SeriesService {
         }
     }
 
-    public Series createSeries(Series series){
+    public Series createSeries(Series series) {
         return seriesRepository.save(series);
     }
 
