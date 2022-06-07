@@ -32,9 +32,9 @@ public class PlayerInfo {
 
     private String langSub;
 
-    private String subsFavicon;
+    private String subsFavicon = "";
 
-    private String subsAuthors;
+    private String subsAuthors = "";
 
     private String source;
 
