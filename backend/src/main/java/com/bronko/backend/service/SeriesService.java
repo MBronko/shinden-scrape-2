@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 @Service
@@ -15,20 +17,23 @@ public class SeriesService {
     private final ShindenScrapeService shindenScrapeService;
 
     public Series getSeries(int id) throws IOException {
-        Optional<Series> series = seriesRepository.findById(id);
-        if (series.isPresent()) {
-            return series.get();
-        } else {
+        Optional<Series> optSeries = seriesRepository.findById(id);
+        if (optSeries.isEmpty()) {
             Series newSeriesData = shindenScrapeService.getSeries(id);
-            return createSeries(newSeriesData);
+            return seriesRepository.save(newSeriesData);
         }
-    }
+        Series series = optSeries.get();
 
-    public Series createSeries(Series series) {
-        return seriesRepository.save(series);
-    }
+        Instant toCompare = Instant.now();
+        toCompare = toCompare.minus(3, ChronoUnit.HOURS);
 
-    public void deleteSeries(int id) {
-        seriesRepository.deleteById(id);
+        if (series.getUpdateTimestamp().isBefore(toCompare)) {
+            Series newSeriesData = shindenScrapeService.getSeries(id);
+
+            series.update(newSeriesData);
+            return seriesRepository.save(series);
+        }
+
+        return series;
     }
 }

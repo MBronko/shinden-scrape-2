@@ -7,10 +7,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,8 +44,7 @@ public class Series {
 
     private int episodeCount = 0;
 
-    @UpdateTimestamp
-    private Timestamp creationTimestamp;
+    private Instant updateTimestamp = Instant.now();
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "relatedTo", orphanRemoval = true)
     private List<RelatedSeries> relatedSeries = new ArrayList<>();
@@ -64,5 +62,18 @@ public class Series {
     public void addEpisode(Episode episode) {
         this.episodes.add(episode);
         episode.setSeries(this);
+    }
+
+    public void update(Series series) {
+        title = series.title;
+        description = series.description;
+        imgUrl = series.imgUrl;
+        rating = series.rating;
+        votes = series.votes;
+        distributionType = series.distributionType;
+        status = series.status;
+        emissionDate = series.emissionDate;
+        episodeCount = series.episodeCount;
+        updateTimestamp = series.updateTimestamp;
     }
 }
